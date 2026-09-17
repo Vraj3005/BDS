@@ -1,0 +1,20 @@
+# Distributed Cyber Threat Intelligence Platform Dependencies
+
+# Big Data Processing
+pyspark>=3.4.0
+
+# Database
+pymongo>=4.5.0
+
+# Data Science & Machine Learning
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# Dashboard & Visualization
+streamlit>=1.28.0
+plotly>=5.17.0
+
+# Configuration & Utilities
+python-dotenv>=1.0.0
+requests>=2.31.0

@@ -1,0 +1,84 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Environment variables
+.env
+.env.local
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Big Data & Logs
+*.log
+metastore_db/
+derby.log
+spark-warehouse/
+.sparkStaging/
+checkpoint/
+checkpoints/
+
+# Hadoop / HDFS temp files
+hadoop-data/
+dfs/
+datanode/
+namenode/
+
+# MongoDB Local Data Dirs
+mongodb-data/
+data/db/
+data/shard1/
+data/shard2/
+data/configdb/
+
+# Datasets (Prevent uploading multi-GB raw CSVs to GitHub)
+data/raw/*.csv
+!data/raw/sample_cicids2017.csv
+data/processed/*.parquet
+data/processed/*.csv
+
+# Unit test and coverage reports
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS specific files
+.DS_Store
+Thumbs.db

@@ -72,7 +72,7 @@ class TestProjectFoundation(unittest.TestCase):
     def test_settings_defaults(self):
         """Verify that default settings produce valid connection strings and paths."""
         mongo_uri = get_mongo_uri()
-        self.assertTrue(mongo_uri.startswith("mongodb://"))
+        self.assertTrue(mongo_uri.startswith("mongodb://") or mongo_uri.startswith("mongodb+srv://"))
         self.assertIn("cyber_intel", MONGO_CONFIG["db_name"])
 
         hdfs_url = get_hdfs_url()

@@ -7,7 +7,7 @@ from pymongo import MongoClient
 base_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(base_dir))
 
-from config.settings import get_mongo_uri, MONGO_CONFIG, PATH_CONFIG
+from config.settings import get_mongo_uri, get_mongo_client, MONGO_CONFIG, PATH_CONFIG
 
 def ingest_data(chunk_size=1000):
     csv_file = PATH_CONFIG["sample_csv"]
@@ -16,9 +16,9 @@ def ingest_data(chunk_size=1000):
         sys.exit(1)
 
     uri = get_mongo_uri()
-    print(f"Connecting to MongoDB at {uri}...")
+    print(f"Connecting to MongoDB at {uri[:35]}...")
     try:
-        client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+        client = get_mongo_client(timeout_ms=10000)
         client.admin.command('ping')
     except Exception as e:
         print(f"Failed to connect to MongoDB: {e}")

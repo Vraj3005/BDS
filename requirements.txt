@@ -1,10 +1,11 @@
 # Distributed Cyber Threat Intelligence Platform Dependencies
 
 # Big Data Processing
-pyspark>=3.4.0
+pyspark==3.5.5
 
 # Database
 pymongo>=4.5.0
+certifi>=2024.2.2
 
 # Data Science & Machine Learning
 pandas>=2.0.0

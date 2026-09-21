@@ -5,6 +5,7 @@ from .settings import (
     SPARK_CONFIG,
     PATH_CONFIG,
     get_mongo_uri,
+    get_mongo_client,
     get_hdfs_url,
     get_spark_master_url,
 )
@@ -15,6 +16,7 @@ __all__ = [
     "SPARK_CONFIG",
     "PATH_CONFIG",
     "get_mongo_uri",
+    "get_mongo_client",
     "get_hdfs_url",
     "get_spark_master_url",
 ]

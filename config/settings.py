@@ -39,9 +39,26 @@ MONGO_CONFIG = {
 
 def get_mongo_uri(custom_port: int = None) -> str:
     """Return MongoDB connection URI."""
+    if custom_port is None:
+        explicit_uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI")
+        if explicit_uri:
+            return explicit_uri
     host = MONGO_CONFIG["host"]
     port = custom_port if custom_port else MONGO_CONFIG["port"]
     return f"mongodb://{host}:{port}"
+
+
+def get_mongo_client(custom_uri: str = None, timeout_ms: int = 10000):
+    """Return an initialized MongoClient with certifi TLS support for MongoDB Atlas."""
+    from pymongo import MongoClient
+    uri = custom_uri or get_mongo_uri()
+    kwargs = {"serverSelectionTimeoutMS": timeout_ms}
+    try:
+        import certifi
+        kwargs["tlsCAFile"] = certifi.where()
+    except ImportError:
+        pass
+    return MongoClient(uri, **kwargs)
 
 
 # ==========================================

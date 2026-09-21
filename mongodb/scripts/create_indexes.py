@@ -6,19 +6,19 @@ from pymongo import MongoClient, ASCENDING
 base_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(base_dir))
 
-from config.settings import get_mongo_uri, MONGO_CONFIG
+from config.settings import get_mongo_uri, get_mongo_client, MONGO_CONFIG
 
 def create_indexes():
     uri = get_mongo_uri()
-    print(f"Connecting to MongoDB at {uri}...")
+    print(f"Connecting to MongoDB at {uri[:35]}...")
     
     try:
-        client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+        client = get_mongo_client(timeout_ms=10000)
         # Force a connection test
         client.admin.command('ping')
     except Exception as e:
         print(f"Failed to connect to MongoDB: {e}")
-        print("Please ensure MongoDB is running.")
+        print("Please ensure MongoDB is running or check Atlas network access.")
         sys.exit(1)
         
     db_name = MONGO_CONFIG["db_name"]

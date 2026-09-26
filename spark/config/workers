@@ -1,0 +1,4 @@
+# Spark Workers List
+# Master node delegates distributed tasks to these worker hostnames
+worker1
+worker2

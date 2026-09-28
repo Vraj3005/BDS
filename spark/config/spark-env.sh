@@ -5,6 +5,7 @@
 # Java & Hadoop configuration
 export JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-11-openjdk}
 export HADOOP_CONF_DIR=${HADOOP_CONF_DIR:-/opt/hadoop/etc/hadoop}
+export SPARK_DIST_CLASSPATH=$(hadoop classpath)
 
 # Spark Master configuration
 export SPARK_MASTER_HOST="master"

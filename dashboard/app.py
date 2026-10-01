@@ -148,16 +148,26 @@ def _mongo_client():
 
 
 def _get_collection(collection_name: str) -> list:
-    """Return all documents from a MongoDB collection as a list of dicts."""
-    client = _mongo_client()
-    if client is None:
-        return []
+    """Return all documents from a MongoDB collection as a list of dicts, or local pipeline cache."""
     try:
-        db = client[MONGO_CONFIG["db_name"]]
-        docs = list(db[collection_name].find({}, {"_id": 0}))
-        return docs
+        client = _mongo_client()
+        if client is not None:
+            db = client[MONGO_CONFIG["db_name"]]
+            docs = list(db[collection_name].find({}, {"_id": 0}))
+            if docs:
+                return docs
     except Exception:
-        return []
+        pass
+
+    # Resilient fallback: read local processed JSON dataset produced by Big Data pipeline
+    json_path = BASE_DIR / "data" / "processed" / f"{collection_name}.json"
+    if json_path.exists():
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -198,7 +208,16 @@ def load_predictions() -> pd.DataFrame:
 @st.cache_data(ttl=300, show_spinner=False)
 def load_model_metrics() -> dict:
     docs = _get_collection("model_metrics")
-    return docs[0] if docs else {}
+    if docs:
+        return docs[0] if isinstance(docs, list) else docs
+    metrics_file = BASE_DIR / "ml" / "models" / "model_metrics.json"
+    if metrics_file.exists():
+        try:
+            with open(metrics_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
 
 
 @st.cache_data(ttl=60, show_spinner=False)

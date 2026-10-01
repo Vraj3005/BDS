@@ -145,26 +145,30 @@ Follow these commits sequentially as each phase is completed:
 
 ---
 
-## ⚡ Quickstart & Local Setup
+## ⚡ Quickstart & Demonstration
 
-### 1. Clone & Set Up Environment
+### 1. Run Complete Platform Demonstration
+Run the automated demonstration covering all 6 pipeline stages in the terminal:
 ```bash
-git clone <your-github-repo-url>
-cd INNOV
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment (Windows PowerShell)
-.\venv\Scripts\Activate.ps1
-# (Linux / Mac / Git Bash)
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+python run_platform.py
 ```
 
-### 2. Verify Foundation
+### 2. Interactive IP Threat Lookup
+Look up the real-time threat intelligence profile, risk score (0-100), and defense policy for any IP:
 ```bash
-python -m unittest tests/test_foundation.py
+python run_platform.py --ip 13.93.219.67
 ```
+
+### 3. Launch Streamlit Cybersecurity Dashboard
+Launch the visual SOC analytics center on `http://localhost:8501`:
+```bash
+streamlit run dashboard/app.py
+```
+
+### 4. Run End-to-End System Tests
+Verify the complete distributed pipeline across all 12 phases:
+```bash
+python -m unittest tests/test_phase12_e2e.py
+```
+
+For complete viva defense notes, mathematical formulas, and presentation preparation, see [docs/demonstration_guide.md](docs/demonstration_guide.md).

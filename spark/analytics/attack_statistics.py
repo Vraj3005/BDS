@@ -35,7 +35,7 @@ from pyspark.sql.functions import (
 
 
 # ---------------------------------------------------------------------------
-# Severity → numeric score mapping
+# Severity -> numeric score mapping
 # ---------------------------------------------------------------------------
 SEVERITY_SCORES = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
 
@@ -216,7 +216,7 @@ def run_attack_statistics(
     spark.sparkContext.setLogLevel("WARN")
 
     print("=" * 65)
-    print("    PHASE 7 — ATTACK STATISTICS & DISTRIBUTION AGGREGATION")
+    print("    PHASE 7 -- ATTACK STATISTICS & DISTRIBUTION AGGREGATION")
     print("=" * 65)
     print(f"  Source: {input_path}")
     print(f"  Output: {out_dir}")
@@ -242,7 +242,7 @@ def run_attack_statistics(
 
     out_path = Path(out_dir) / "attack_distribution.parquet"
     attack_dist.write.mode("overwrite").parquet(str(out_path))
-    print(f"  [OK] {attack_count} attack-type aggregations saved → {out_path}")
+    print(f"  [OK] {attack_count} attack-type aggregations saved -> {out_path}")
     results["attack_distribution_rows"] = attack_count
 
     if write_mongo:
@@ -260,7 +260,7 @@ def run_attack_statistics(
 
     out_path = Path(out_dir) / "protocol_distribution.parquet"
     proto_dist.write.mode("overwrite").parquet(str(out_path))
-    print(f"  [OK] {proto_count} protocol aggregations saved → {out_path}")
+    print(f"  [OK] {proto_count} protocol aggregations saved -> {out_path}")
     results["protocol_distribution_rows"] = proto_count
 
     # ------------------------------------------------------------------
@@ -273,7 +273,7 @@ def run_attack_statistics(
 
     out_path = Path(out_dir) / "hourly_attack_intensity.parquet"
     hourly.write.mode("overwrite").parquet(str(out_path))
-    print(f"  [OK] {hourly_count} hourly buckets saved → {out_path}")
+    print(f"  [OK] {hourly_count} hourly buckets saved -> {out_path}")
     results["hourly_intensity_rows"] = hourly_count
 
     # ------------------------------------------------------------------
@@ -286,7 +286,7 @@ def run_attack_statistics(
 
     out_path = Path(out_dir) / "severity_distribution.parquet"
     sev_dist.write.mode("overwrite").parquet(str(out_path))
-    print(f"  [OK] {sev_count} severity levels saved → {out_path}")
+    print(f"  [OK] {sev_count} severity levels saved -> {out_path}")
     results["severity_distribution_rows"] = sev_count
 
     # ------------------------------------------------------------------
@@ -301,7 +301,7 @@ def run_attack_statistics(
         json.dump(results, fh, indent=2)
 
     print("\n" + "=" * 65)
-    print("              ATTACK STATISTICS — SUMMARY")
+    print("              ATTACK STATISTICS -- SUMMARY")
     print("=" * 65)
     print(f"  Total Records Analysed:      {total_records:,}")
     print(f"  Attack-Type Categories:      {attack_count}")

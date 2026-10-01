@@ -73,6 +73,7 @@ data/raw/*.csv
 !data/raw/sample_cicids2017.csv
 data/processed/*.parquet
 data/processed/*.csv
+data/processed/*.json
 
 # Unit test and coverage reports
 .pytest_cache/

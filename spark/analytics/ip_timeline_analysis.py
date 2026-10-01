@@ -84,7 +84,7 @@ def _write_to_mongo(df, collection_name: str) -> int:
         coll.drop()
         coll.insert_many(records)
         client.close()
-        print(f"  [OK] {len(records)} docs → MongoDB '{collection_name}'.")
+        print(f"  [OK] {len(records)} docs -> MongoDB '{collection_name}'.")
     except Exception as exc:
         print(f"  [WARN] MongoDB write skipped ({exc}). Parquet output still saved.")
         return 0
@@ -92,7 +92,7 @@ def _write_to_mongo(df, collection_name: str) -> int:
 
 
 # ===========================================================================
-# IP ANALYSIS — source / destination IP aggregations
+# IP ANALYSIS -- source / destination IP aggregations
 # ===========================================================================
 
 def compute_top_attacking_ips(df, top_n: int = 50):
@@ -190,7 +190,7 @@ def compute_ip_attack_crosstab(df, top_ips: int = 20):
 
 
 # ===========================================================================
-# TIMELINE ANALYSIS — temporal aggregations
+# TIMELINE ANALYSIS -- temporal aggregations
 # ===========================================================================
 
 def compute_hourly_timeline(df):
@@ -312,7 +312,7 @@ def run_ip_analysis(
     spark.sparkContext.setLogLevel("WARN")
 
     print("=" * 65)
-    print("      PHASE 7 — IP THREAT FREQUENCY ANALYSIS")
+    print("      PHASE 7 -- IP THREAT FREQUENCY ANALYSIS")
     print("=" * 65)
     print(f"  Source : {input_path}")
     print(f"  Output : {out_dir}")
@@ -333,7 +333,7 @@ def run_ip_analysis(
 
     p = Path(out_dir) / "top_attacking_ips.parquet"
     src_df.write.mode("overwrite").parquet(str(p))
-    print(f"  [OK] {src_count} rows → {p}")
+    print(f"  [OK] {src_count} rows -> {p}")
     results["top_attacking_ips"] = src_count
 
     if write_mongo:
@@ -347,7 +347,7 @@ def run_ip_analysis(
 
     p = Path(out_dir) / "top_targeted_ips.parquet"
     dst_df.write.mode("overwrite").parquet(str(p))
-    print(f"  [OK] {dst_count} rows → {p}")
+    print(f"  [OK] {dst_count} rows -> {p}")
     results["top_targeted_ips"] = dst_count
 
     # -- IP × Attack-type cross-tab ---------------------------------------
@@ -358,14 +358,14 @@ def run_ip_analysis(
 
     p = Path(out_dir) / "ip_attack_crosstab.parquet"
     pivot_df.write.mode("overwrite").parquet(str(p))
-    print(f"  [OK] {pivot_count} rows → {p}")
+    print(f"  [OK] {pivot_count} rows -> {p}")
     results["ip_attack_crosstab_rows"] = pivot_count
 
     elapsed = time.time() - start
     results.update({"total_records": total, "execution_time_s": round(elapsed, 2)})
 
     print("\n" + "=" * 65)
-    print("           IP THREAT ANALYSIS — SUMMARY")
+    print("           IP THREAT ANALYSIS -- SUMMARY")
     print("=" * 65)
     print(f"  Total Records Analysed:   {total:,}")
     print(f"  Top Attacking IPs:        {src_count}")
@@ -401,7 +401,7 @@ def run_timeline_analysis(
     spark.sparkContext.setLogLevel("WARN")
 
     print("=" * 65)
-    print("     PHASE 7 — NETWORK TIMELINE ANALYSIS")
+    print("     PHASE 7 -- NETWORK TIMELINE ANALYSIS")
     print("=" * 65)
     print(f"  Source : {input_path}")
     print(f"  Output : {out_dir}")
@@ -422,7 +422,7 @@ def run_timeline_analysis(
 
     p = Path(out_dir) / "network_timeline_hourly.parquet"
     hourly.write.mode("overwrite").parquet(str(p))
-    print(f"  [OK] {hourly_count} hourly rows → {p}")
+    print(f"  [OK] {hourly_count} hourly rows -> {p}")
     results["hourly_timeline_rows"] = hourly_count
 
     if write_mongo:
@@ -436,7 +436,7 @@ def run_timeline_analysis(
 
     p = Path(out_dir) / "network_timeline_daily.parquet"
     daily.write.mode("overwrite").parquet(str(p))
-    print(f"  [OK] {daily_count} daily rows → {p}")
+    print(f"  [OK] {daily_count} daily rows -> {p}")
     results["daily_cadence_rows"] = daily_count
 
     # -- 6-hour surge windows --------------------------------------------
@@ -447,14 +447,14 @@ def run_timeline_analysis(
 
     p = Path(out_dir) / "attack_surge_windows.parquet"
     surge.write.mode("overwrite").parquet(str(p))
-    print(f"  [OK] {surge_count} surge windows → {p}")
+    print(f"  [OK] {surge_count} surge windows -> {p}")
     results["surge_window_rows"] = surge_count
 
     elapsed = time.time() - start
     results.update({"total_records": total, "execution_time_s": round(elapsed, 2)})
 
     print("\n" + "=" * 65)
-    print("           TIMELINE ANALYSIS — SUMMARY")
+    print("           TIMELINE ANALYSIS -- SUMMARY")
     print("=" * 65)
     print(f"  Total Records Analysed:   {total:,}")
     print(f"  Hourly Buckets:           {hourly_count}")
@@ -473,7 +473,7 @@ def run_timeline_analysis(
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
-        description="Phase 7 — IP & Timeline Analytics"
+        description="Phase 7 -- IP & Timeline Analytics"
     )
     parser.add_argument(
         "--mode", choices=["ip", "timeline", "both"], default="both",

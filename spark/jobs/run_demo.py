@@ -84,15 +84,28 @@ def sync_json_caches(spark):
     }
     for pq_name, json_name in mappings.items():
         pq_path = proc_dir / pq_name
-        json_path = proc_dir / json_name
-        if pq_path.exists() and not json_path.exists():
+        if pq_path.exists():
             try:
-                df = spark.read.parquet(str(pq_path))
-                records = [row.asDict() for row in df.collect()]
-                with open(json_path, "w", encoding="utf-8") as f:
-                    json.dump(records, f, indent=2, default=str)
+                import pyarrow.parquet as pq
+                import pandas as pd
+                parts = list(pq_path.glob("part-*.parquet"))
+                if parts:
+                    dfs = [pq.read_table(str(f)).to_pandas() for f in parts]
+                    df_comb = pd.concat(dfs, ignore_index=True)
+                    for c in df_comb.columns:
+                        if pd.api.types.is_datetime64_any_dtype(df_comb[c]):
+                            df_comb[c] = df_comb[c].astype(str)
+                    records = df_comb.to_dict(orient="records")
+                    with open(json_path, "w", encoding="utf-8") as f:
+                        json.dump(records, f, indent=2, default=str)
             except Exception:
-                pass
+                try:
+                    df = spark.read.parquet(str(pq_path))
+                    records = [row.asDict() for row in df.collect()]
+                    with open(json_path, "w", encoding="utf-8") as f:
+                        json.dump(records, f, indent=2, default=str)
+                except Exception:
+                    pass
 
 
 def show_data_pipeline_summary(spark):

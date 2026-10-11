@@ -49,6 +49,7 @@ def get_spark_session(app_name: str = "CyberThreat-AttackStats") -> SparkSession
         .config("spark.driver.host", "127.0.0.1")
         .config("spark.driver.bindAddress", "127.0.0.1")
         .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.python.worker.reuse", "true")
         .config("spark.ui.enabled", "false")
         .getOrCreate()
     )
@@ -100,13 +101,13 @@ def compute_attack_distribution(df) -> "DataFrame":
     """
     total = df.count()
 
-    severity_map_df = (
-        df.sparkSession.createDataFrame(
-            list(SEVERITY_SCORES.items()), ["severity", "severity_score"]
-        )
+    scored = df.withColumn(
+        "severity_score",
+        when(col("severity") == "Critical", 4)
+        .when(col("severity") == "High", 3)
+        .when(col("severity") == "Medium", 2)
+        .otherwise(1)
     )
-
-    scored = df.join(broadcast(severity_map_df), on="severity", how="left")
 
     stats = (
         scored.groupBy("attack_type")

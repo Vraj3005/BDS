@@ -52,6 +52,7 @@ def get_spark_session(app_name: str = "CyberThreat-IPAnalysis") -> SparkSession:
         .config("spark.driver.host", "127.0.0.1")
         .config("spark.driver.bindAddress", "127.0.0.1")
         .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.python.worker.reuse", "true")
         .config("spark.ui.enabled", "false")
         .getOrCreate()
     )

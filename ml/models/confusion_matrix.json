@@ -1,68 +1,68 @@
 {
-  "overall_accuracy": 0.5198,
-  "weighted_f1": 0.4991,
+  "overall_accuracy": 0.9923,
+  "weighted_f1": 0.9923,
   "confusion_matrix": {
-    "PortScan": {
-      "PortScan": 92,
+    "BENIGN": {
+      "BENIGN": 8007,
       "DDoS": 0,
-      "BENIGN": 98,
-      "BruteForce": 16,
-      "Botnet": 3
+      "PortScan": 0,
+      "Botnet": 0,
+      "BruteForce": 0
     },
     "DDoS": {
-      "PortScan": 0,
-      "DDoS": 119,
       "BENIGN": 0,
-      "BruteForce": 59,
-      "Botnet": 31
+      "DDoS": 4789,
+      "PortScan": 0,
+      "Botnet": 0,
+      "BruteForce": 0
     },
-    "BENIGN": {
-      "PortScan": 1,
+    "PortScan": {
+      "BENIGN": 0,
       "DDoS": 0,
-      "BENIGN": 186,
-      "BruteForce": 0,
-      "Botnet": 0
-    },
-    "BruteForce": {
-      "PortScan": 63,
-      "DDoS": 13,
-      "BENIGN": 1,
-      "BruteForce": 72,
-      "Botnet": 24
+      "PortScan": 2999,
+      "Botnet": 0,
+      "BruteForce": 0
     },
     "Botnet": {
-      "PortScan": 63,
-      "DDoS": 21,
       "BENIGN": 0,
-      "BruteForce": 67,
-      "Botnet": 29
+      "DDoS": 0,
+      "PortScan": 0,
+      "Botnet": 1869,
+      "BruteForce": 138
+    },
+    "BruteForce": {
+      "BENIGN": 0,
+      "DDoS": 0,
+      "PortScan": 0,
+      "Botnet": 14,
+      "BruteForce": 1998
     }
   },
   "per_class_metrics": {
-    "PortScan": {
-      "precision": 0.4201,
-      "recall": 0.4402,
-      "f1_score": 0.4299
+    "BENIGN": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0
     },
     "DDoS": {
-      "precision": 0.7778,
-      "recall": 0.5694,
-      "f1_score": 0.6575
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0
     },
-    "BENIGN": {
-      "precision": 0.6526,
-      "recall": 0.9947,
-      "f1_score": 0.7881
-    },
-    "BruteForce": {
-      "precision": 0.3364,
-      "recall": 0.4162,
-      "f1_score": 0.3721
+    "PortScan": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0
     },
     "Botnet": {
-      "precision": 0.3333,
-      "recall": 0.1611,
-      "f1_score": 0.2172
+      "precision": 0.9926,
+      "recall": 0.9312,
+      "f1_score": 0.9609
+    },
+    "BruteForce": {
+      "precision": 0.9354,
+      "recall": 0.993,
+      "f1_score": 0.9634
     }
   }
 }

@@ -118,17 +118,25 @@ def predict_batch(limit: int = 10, write_mongo: bool = False):
         print(f"  Threat Severity:  {severity}")
         print("-" * 65)
 
-        if write_mongo:
-            mongo_records.append({
-                "timestamp": timestamp_str,
-                "source_ip": row.source_ip,
-                "destination_ip": row.destination_ip,
-                "actual_attack": actual_attack,
-                "predicted_attack": pred_attack,
-                "confidence": confidence,
-                "severity": severity,
-                "analyzed_at": datetime.now().isoformat()
-            })
+        mongo_records.append({
+            "timestamp": timestamp_str,
+            "source_ip": row.source_ip,
+            "destination_ip": row.destination_ip,
+            "actual_attack": actual_attack,
+            "predicted_attack": pred_attack,
+            "confidence": confidence,
+            "severity": severity,
+            "analyzed_at": datetime.now().isoformat()
+        })
+
+    # Cache locally to data/processed/predictions.json for dashboard fallback
+    try:
+        local_pred_file = PATH_CONFIG["processed_data_dir"] / "predictions.json"
+        with open(local_pred_file, "w", encoding="utf-8") as pf:
+            json.dump(mongo_records, pf, indent=2, default=str)
+        print(f"[+] Saved {len(mongo_records)} predictions to local cache '{local_pred_file}'.")
+    except Exception as e:
+        print(f"[-] Local cache note: {e}")
 
     if write_mongo and mongo_records:
         try:

@@ -53,11 +53,13 @@ def get_mongo_client(custom_uri: str = None, timeout_ms: int = 10000):
     from pymongo import MongoClient
     uri = custom_uri or get_mongo_uri()
     kwargs = {"serverSelectionTimeoutMS": timeout_ms}
-    try:
-        import certifi
-        kwargs["tlsCAFile"] = certifi.where()
-    except ImportError:
-        pass
+    if "mongodb+srv://" in uri or "ssl=true" in uri.lower():
+        try:
+            import certifi
+            kwargs["tlsCAFile"] = certifi.where()
+        except ImportError:
+            pass
+        kwargs["tlsAllowInvalidCertificates"] = True
     return MongoClient(uri, **kwargs)
 
 

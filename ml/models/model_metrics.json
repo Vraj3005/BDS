@@ -1,16 +1,16 @@
 {
   "decision_tree": {
-    "accuracy": 0.9859,
-    "f1_score": 0.9859,
-    "precision": 0.9869,
-    "recall": 0.9859,
-    "training_time_s": 10.19
+    "accuracy": 0.5094,
+    "f1_score": 0.4869,
+    "precision": 0.5379,
+    "recall": 0.5094,
+    "training_time_s": 4.11
   },
   "random_forest": {
-    "accuracy": 0.9923,
-    "f1_score": 0.9923,
-    "precision": 0.9927,
-    "recall": 0.9923,
-    "training_time_s": 8.15
+    "accuracy": 0.5198,
+    "f1_score": 0.4991,
+    "precision": 0.5121,
+    "recall": 0.5198,
+    "training_time_s": 3.01
   }
 }

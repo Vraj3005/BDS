@@ -84,6 +84,7 @@ def sync_json_caches(spark):
     }
     for pq_name, json_name in mappings.items():
         pq_path = proc_dir / pq_name
+        json_path = proc_dir / json_name
         if pq_path.exists():
             try:
                 import pyarrow.parquet as pq
@@ -187,7 +188,7 @@ def show_ml_performance():
     if cm_file.exists():
         with open(cm_file, "r", encoding="utf-8") as f:
             cm_data = json.load(f)
-        classes = cm_data.get("classes", [])
+        classes = cm_data.get("classes") or list(cm_data.get("confusion_matrix", {}).keys()) or ["BENIGN", "DDoS", "PortScan", "Botnet", "BruteForce"]
         print(f"\n Multi-Class Evaluation Classes ({len(classes)}): {', '.join(classes)}")
 
 

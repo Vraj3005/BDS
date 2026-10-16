@@ -1,0 +1,288 @@
+--------------------------------------------------------------------------------
+1. APACHE SPARK — DISTRIBUTED PROCESSING
+   File: spark/preprocessing/clean_logs.py (Line 38–46)
+--------------------------------------------------------------------------------
+
+CODE:
+    SparkSession.builder
+    .appName("CyberThreat-CleanLogs")
+    .master(get_spark_master_url(use_cluster=False))
+    .config("spark.sql.shuffle.partitions", "4")  # 4 parallel partitions, each runs on its node
+    .getOrCreate()
+
+EXPLANATION:
+    SparkSession is the entry point for all distributed processing.
+    Instead of loading all 100,000 records into one machine's RAM,
+    Spark splits the data into 4 partitions and processes them in
+    parallel across worker nodes. This is why we use Spark instead
+    of Python Pandas — Pandas would crash on large datasets.
+
+
+--------------------------------------------------------------------------------
+2. MAPREDUCE — MAP PHASE (Transform each record)
+   File: spark/analytics/attack_statistics.py (Line 104–110)
+--------------------------------------------------------------------------------
+
+CODE:
+    scored = df.withColumn("severity_score",
+        when(col("severity") == "Critical", 4)
+        .when(col("severity") == "High", 3)
+        .when(col("severity") == "Medium", 2)
+        .otherwise(1)
+    )
+
+EXPLANATION:
+    This is the MAP step. Every single record in the dataset is
+    transformed — severity text ("Critical", "High") is mapped to
+    a numeric score (4, 3, 2, 1). Each worker node does this on
+    its own partition independently and in parallel.
+
+
+--------------------------------------------------------------------------------
+3. MAPREDUCE — REDUCE PHASE (GroupBy + Aggregate)
+   File: spark/analytics/attack_statistics.py (Line 112–127)
+--------------------------------------------------------------------------------
+
+CODE:
+    stats = (
+        scored.groupBy("attack_type")          # GROUP (Shuffle by key)
+        .agg(
+            count("*").alias("total_flows"),   # COUNT rows per attack type
+            avg("severity_score").alias("avg_severity_score"),  # AVG score
+            sum("total_bytes").alias("total_bytes_gb")          # SUM bytes
+        )
+        .orderBy(desc("total_flows"))
+    )
+
+EXPLANATION:
+    This is the REDUCE step. After the MAP phase, records are
+    grouped by attack_type (DDoS, PortScan, BENIGN, etc.) and
+    aggregated. Each worker counts/sums its own partition first,
+    then results are merged at the driver. This is exactly how
+    Hadoop MapReduce works — but in-memory, so 100x faster.
+
+
+--------------------------------------------------------------------------------
+4. RDD — RAW MAPREDUCE API (Classic MapReduce)
+   File: ml/training/evaluate_models.py (Line 84–87)
+--------------------------------------------------------------------------------
+
+CODE:
+    pred_and_label_rdd = predictions.select("prediction", "label").rdd.map(
+        lambda row: (float(row.prediction), float(row.label))
+    )
+    metrics = MulticlassMetrics(pred_and_label_rdd)
+
+EXPLANATION:
+    This is Spark's low-level RDD (Resilient Distributed Dataset) API —
+    the original MapReduce interface. We convert a DataFrame to RDD and
+    apply a .map() function to transform each row into a (prediction, label)
+    tuple. This RDD is then passed to MulticlassMetrics to build the
+    5x5 confusion matrix for our ML model evaluation.
+
+
+--------------------------------------------------------------------------------
+5. SPARK ETL PIPELINE — READ, TRANSFORM, WRITE
+   File: spark/preprocessing/clean_logs.py (Line 84, 92–103, 154)
+--------------------------------------------------------------------------------
+
+CODE:
+    # READ — distributed CSV read (not loaded into RAM all at once)
+    raw_df = spark.read.csv(str(input_path), header=True, inferSchema=True)
+
+    # TRANSFORM (Map Phase) — type cast + clean each column
+    typed_df = (
+        raw_df
+        .withColumn("flow_duration", col("flow_duration").cast(LongType()))
+        .withColumn("source_ip",     trim(col("source_ip")))
+        .withColumn("protocol",      upper(trim(col("protocol"))))
+        .withColumn("attack_type",   trim(col("attack_type")))
+    )
+
+    # FILTER — drop bad records
+    valid_df = typed_df.filter(
+        col("source_ip").isNotNull() &
+        (col("flow_duration") >= 0) &
+        (col("total_bytes")   >= 0)
+    )
+
+    # WRITE — save as Parquet (columnar, compressed)
+    cleaned_df.write.mode("overwrite").parquet(str(output_path))
+
+EXPLANATION:
+    This is the full ETL pipeline (Extract → Transform → Load).
+    100,000 raw network logs are read, cleaned (nulls removed,
+    types fixed, duplicates dropped), and saved as Parquet.
+    Parquet is 75% smaller than CSV and allows Spark to read
+    only the columns it needs (columnar storage).
+
+
+--------------------------------------------------------------------------------
+6. PYSPARK MLLIB PIPELINE — StringIndexer + VectorAssembler + StandardScaler
+   File: spark/preprocessing/feature_engineering.py (Line 93–142)
+--------------------------------------------------------------------------------
+
+CODE:
+    # Encode text → numbers:  "TCP"→0, "UDP"→1, "ICMP"→2
+    protocol_indexer = StringIndexer(inputCol="protocol", outputCol="protocol_index")
+    severity_indexer = StringIndexer(inputCol="severity", outputCol="severity_index")
+
+    # Encode target label:  "DDoS"→0, "PortScan"→1, "BENIGN"→2, etc.
+    attack_indexer = StringIndexer(inputCol="attack_type", outputCol="label")
+
+    # Combine all 8 features into ONE DenseVector per row
+    assembler = VectorAssembler(
+        inputCols=["flow_duration", "packet_length", "total_bytes",
+                   "packet_count", "hour", "day_of_week",
+                   "protocol_index", "severity_index"],
+        outputCol="raw_features"
+    )
+
+    # Normalize: ensures no single feature dominates due to scale
+    scaler = StandardScaler(inputCol="raw_features", outputCol="features")
+
+    # Chain all steps into a single distributed pipeline
+    pipeline = Pipeline(stages=[
+        protocol_indexer, severity_indexer, attack_indexer, assembler, scaler
+    ])
+    pipeline_model = pipeline.fit(df)
+    transformed_df  = pipeline_model.transform(df)
+
+EXPLANATION:
+    ML models only understand numbers, not text. StringIndexer
+    converts text categories to numeric indexes. VectorAssembler
+    combines all 8 numeric features into a single DenseVector
+    (what the ML model actually reads). StandardScaler ensures
+    large values like total_bytes don't unfairly dominate small
+    values like hour. All steps are chained in a Pipeline so
+    they execute in order, distributed across Spark workers.
+
+
+--------------------------------------------------------------------------------
+7. DECISION TREE & RANDOM FOREST — DISTRIBUTED ML TRAINING
+   File: ml/training/train_models.py (Line 83–107)
+--------------------------------------------------------------------------------
+
+CODE:
+    # 80/20 Train-Test Split
+    train_df, test_df = data_df.randomSplit([0.8, 0.2], seed=42)
+
+    # Baseline: Single Decision Tree (prone to overfitting)
+    dt = DecisionTreeClassifier(
+        labelCol="label", featuresCol="features",
+        maxDepth=5, seed=42
+    )
+    dt_model = dt.fit(train_df)
+
+    # Better: Random Forest = 20 trees voting together
+    rf = RandomForestClassifier(
+        labelCol="label", featuresCol="features",
+        numTrees=20,     # 20 independent trees
+        maxDepth=7, seed=42
+    )
+    rf_model = rf.fit(train_df)
+    rf_model.write().overwrite().save(str(rf_model_path))  # Save model to disk
+
+EXPLANATION:
+    Decision Tree: one tree that learns from training data.
+    Problem — it memorizes noise in the data (overfitting).
+
+    Random Forest: 20 different trees, each trained on a random
+    subset of data and features. All 20 trees vote on each prediction.
+    Individual errors cancel out → higher accuracy.
+
+    Both are distributed — Spark trains across worker nodes in parallel.
+    Result: Random Forest (52%) beats Decision Tree (51%) accuracy.
+
+
+--------------------------------------------------------------------------------
+8. MONGODB — NoSQL DOCUMENT STORE (Ingestion)
+   File: ingestion/csv_to_mongodb.py (Line 52–58)
+--------------------------------------------------------------------------------
+
+CODE:
+    # Read CSV in chunks of 1000 rows at a time
+    for chunk in pd.read_csv(csv_file, chunksize=1000, dtype=dtypes):
+        chunk = chunk.where(pd.notnull(chunk), None)  # Replace NaN → None
+        records = chunk.to_dict('records')             # Each row → Python dict
+        logs_col.insert_many(records)                  # Bulk insert to MongoDB
+
+EXPLANATION:
+    Instead of loading 100,000 rows at once, we read 1000 rows at
+    a time (chunked ingestion) and bulk-insert into MongoDB.
+    MongoDB stores each row as a flexible JSON/BSON document —
+    unlike MySQL which needs a rigid fixed schema. Network logs
+    have varying fields (TCP vs UDP vs ICMP), so MongoDB's
+    dynamic schema handles this naturally.
+
+
+--------------------------------------------------------------------------------
+9. HADOOP HDFS — DISTRIBUTED STORAGE CONFIG
+   File: hadoop/config/hdfs-site.xml
+--------------------------------------------------------------------------------
+
+CODE:
+    <!-- Split large files into 128MB blocks -->
+    <property>
+        <name>dfs.block.size</name>
+        <value>134217728</value>
+    </property>
+
+    <!-- Store every block on 3 different machines -->
+    <property>
+        <name>dfs.replication</name>
+        <value>3</value>
+    </property>
+
+EXPLANATION:
+    HDFS splits large raw log files into 128MB blocks and stores
+    each block on 3 different DataNodes. If one machine (DataNode)
+    fails, the other two still have the data — fault tolerance.
+    HDFS acts as the cold data lake. Spark reads directly from
+    HDFS, processing data where it is stored (data locality).
+
+
+--------------------------------------------------------------------------------
+10. PARQUET — COLUMNAR STORAGE FORMAT
+    File: spark/preprocessing/clean_logs.py (Line 154)
+          spark/preprocessing/feature_engineering.py (Line 85)
+--------------------------------------------------------------------------------
+
+CODE:
+    # Write as Parquet (columnar, Snappy compressed)
+    cleaned_df.write.mode("overwrite").parquet(str(output_path))
+
+    # Next stage reads only the columns it needs — skips the rest
+    df = spark.read.parquet(str(input_path))
+
+EXPLANATION:
+    CSV = row-based: to read 1 column, you must read the whole row.
+    Parquet = column-based: reads only the columns requested.
+    This makes Spark queries much faster and reduces file size by ~75%.
+    Also supports Snappy compression automatically.
+    Used between every pipeline stage as the intermediate format.
+
+
+================================================================================
+   PIPELINE FLOW SUMMARY
+================================================================================
+
+   CICIDS2017 CSV (100,000 rows)
+         |
+         |-- [Ingestion] csv_to_mongodb.py      → MongoDB (network_logs collection)
+         |
+         |-- [ETL]       clean_logs.py          → cleaned_logs.parquet (5,000 rows)
+         |
+         |-- [Features]  feature_engineering.py → features.parquet (8-dim DenseVectors)
+         |
+         |-- [Analytics] attack_statistics.py   → attack_distribution.parquet
+         |               ip_timeline_analysis.py → top_attacking_ips.parquet
+         |
+         |-- [ML]        train_models.py        → rf_threat_model (saved)
+         |               evaluate_models.py     → confusion_matrix.json
+         |
+         |-- [Risk]      calculate_risk.py      → ip_risk_scores.parquet
+         |
+         |-- [Integrate] integrate_results.py   → MongoDB (all analytics collections)
+         |
+         |-- [Dashboard] dashboard/app.py       → Streamlit UI (http://localhost:8501)

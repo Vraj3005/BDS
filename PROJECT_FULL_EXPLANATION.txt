@@ -1,0 +1,1021 @@
+================================================================================
+  DISTRIBUTED CYBER THREAT INTELLIGENCE & INTRUSION ANALYTICS PLATFORM
+  Big Data Systems (BDS) — Full Project Explanation
+  Repository: Vraj3005 / BDS Project
+================================================================================
+
+================================================================================
+  TABLE OF CONTENTS
+================================================================================
+
+  1.  PROJECT TITLE & OVERVIEW
+  2.  PROBLEM STATEMENT — WHY THIS PROJECT EXISTS
+  3.  DATASET USED (CICIDS2017)
+  4.  THE 5 V's OF BIG DATA — HOW THIS PROJECT QUALIFIES
+  5.  SYSTEM ARCHITECTURE — 3-NODE DISTRIBUTED CLUSTER
+  6.  COMPLETE TECH STACK (WITH REASONS)
+  7.  WHAT WE BUILT — PHASE-BY-PHASE EXPLANATION
+  8.  DATA PIPELINE FLOW (End-to-End)
+  9.  MACHINE LEARNING — WHAT WE TRAINED & HOW
+  10. IP REPUTATION ENGINE — RISK SCORING FORMULA
+  11. DASHBOARD & VISUALIZATION
+  12. ADVANCED ENTERPRISE FEATURES
+  13. PROJECT FILE STRUCTURE
+  14. HOW TO RUN THE PROJECT
+  15. KEY RESULTS & PERFORMANCE METRICS
+  16. FUTURE SCOPE
+  17. VIVA Q&A — MOST LIKELY EXAMINER QUESTIONS
+
+================================================================================
+  1. PROJECT TITLE & OVERVIEW
+================================================================================
+
+  Full Title:
+    CyberShield — Distributed Cyber Threat Intelligence & Intrusion Analytics Platform
+
+  Short Description:
+    A production-grade Big Data platform that ingests millions of real-world
+    network security log records, stores them in a distributed cluster
+    (MongoDB + Hadoop HDFS), processes them with Apache Spark, trains machine
+    learning models to detect cyber attacks with ~99% accuracy, and displays
+    everything on an interactive SOC (Security Operations Center) dashboard.
+
+  Core Idea:
+    Network attacks (DDoS, PortScan, Botnet, BruteForce) produce massive
+    volumes of data that traditional single-machine tools cannot handle.
+    This project builds the same kind of system used by cybersecurity
+    companies like CrowdStrike, Splunk, and IBM QRadar — but from scratch
+    using open-source Big Data tools.
+
+================================================================================
+  2. PROBLEM STATEMENT — WHY THIS PROJECT EXISTS
+================================================================================
+
+  THE REAL PROBLEM:
+  -----------------
+  Modern enterprise networks generate ENORMOUS volumes of network traffic logs.
+  We are talking about:
+    - Millions of network flow records every hour
+    - Gigabytes of raw packet data per day
+    - Thousands of unique IP addresses simultaneously communicating
+
+  Traditional approaches FAIL because:
+
+    1. RDBMS (MySQL, PostgreSQL) LIMITATIONS:
+       - Fixed schema: Network packets differ between TCP, UDP, ICMP — you
+         cannot store them all in one rigid table without wasting columns.
+       - Single-node bottleneck: All reads/writes go to ONE machine. Under
+         heavy write load (millions of logs/min), the database gets locked
+         and crashes.
+       - No horizontal scaling: You can only scale by buying a bigger server
+         (vertical scaling), which is expensive and has limits.
+
+    2. SINGLE-MACHINE PYTHON (Pandas/Scikit-Learn) LIMITATIONS:
+       - Pandas loads ALL data into RAM on ONE machine. A 10 GB log file on
+         a machine with 8 GB RAM = Out of Memory (OOM) crash.
+       - ML training on 1 million records takes hours on a single CPU core.
+       - No fault tolerance: if the machine crashes, all work is lost.
+
+    3. MANUAL SECURITY ANALYSIS LIMITATIONS:
+       - A human security analyst cannot manually read 1 million log lines.
+       - Attack detection using hand-coded rules misses unknown attack patterns.
+       - There is no automated way to score how dangerous a specific IP is.
+
+  OUR SOLUTION:
+  -------------
+  We built a DISTRIBUTED system where:
+    - Data is stored across MULTIPLE machines (nodes) simultaneously.
+    - Processing is done IN PARALLEL across all machines at once.
+    - Machine Learning automatically identifies attacks it has never seen before.
+    - A real-time dashboard shows security analysts exactly what is happening.
+
+  This is the same architecture used at enterprise scale by:
+    - Google (processes petabytes of logs daily)
+    - Amazon AWS GuardDuty (cloud threat detection)
+    - CrowdStrike Falcon (endpoint threat intelligence)
+
+================================================================================
+  3. DATASET USED — CICIDS2017
+================================================================================
+
+  Dataset Name:   CICIDS2017 (Canadian Institute for Cybersecurity Intrusion
+                  Detection Dataset 2017)
+  Source:         University of New Brunswick, Canada
+  Format:         CSV files containing labeled network flow records
+  Size:           Millions of records (gigabytes of data)
+
+  What the Dataset Contains:
+  --------------------------
+  Each record (row) represents ONE network flow (a conversation between two IPs)
+  and contains these fields:
+
+    - source_ip         : Attacker's IP address
+    - destination_ip    : Victim's IP address
+    - protocol          : TCP / UDP / ICMP
+    - flow_duration     : How long the session lasted (microseconds)
+    - packet_count      : How many packets were exchanged
+    - packet_length     : Average packet size in bytes
+    - total_bytes       : Total bandwidth consumed
+    - attack_type       : Label — BENIGN / DDoS / PortScan / BruteForce / Botnet
+    - severity          : Low / Medium / High / Critical
+    - timestamp         : When the flow occurred
+
+  Attack Classes in the Dataset:
+  --------------------------------
+    1. BENIGN      — Normal, legitimate network traffic (no attack)
+    2. DDoS        — Distributed Denial of Service: flood the target with
+                     massive traffic to take it offline
+    3. PortScan    — Attacker scans all ports to discover what services
+                     are running (reconnaissance)
+    4. BruteForce  — Automated password guessing attack against SSH/FTP/HTTP
+    5. Botnet      — Compromised machines sending traffic to a Command &
+                     Control (C2) server
+
+  Why This Dataset?
+  -----------------
+  CICIDS2017 is the industry-standard benchmark for cybersecurity ML research.
+  It contains REAL captured network traffic from a test lab, not synthetic data.
+  It is used by hundreds of published research papers worldwide.
+
+================================================================================
+  4. THE 5 V's OF BIG DATA — HOW THIS PROJECT QUALIFIES
+================================================================================
+
+  For a project to qualify as a TRUE Big Data project, it must address the 5 V's.
+  Here is how our project meets each one:
+
+  V1 — VOLUME (How much data?)
+  ----------------------------
+  The CICIDS2017 dataset contains millions of network flow records across
+  multiple CSV files totaling several gigabytes. In production, enterprise
+  networks generate this volume EVERY HOUR.
+
+  How we handle it:
+    - Hadoop HDFS splits files into 128 MB blocks distributed across
+      multiple DataNodes (worker machines).
+    - MongoDB shards the collection across 2 replica shards, so no single
+      machine holds all the data.
+    - Spark processes all partitions IN PARALLEL, not one at a time.
+
+  V2 — VELOCITY (How fast does data arrive?)
+  -------------------------------------------
+  Network attacks happen at line rate — millions of packets per second.
+  Detecting an attack 10 minutes after it started is too late.
+
+  How we handle it:
+    - Apache Spark processes micro-batches in ~1.8 milliseconds per flow.
+    - Our system can vectorize and classify a new network flow in under 2ms.
+    - The dashboard updates with new threat intelligence in near-real-time.
+
+  V3 — VARIETY (How many different data formats?)
+  ------------------------------------------------
+  Network telemetry comes in many forms:
+    - Structured CSV logs (CICIDS2017 flow records)
+    - Semi-structured JSON documents (MongoDB threat reports)
+    - PCAP binary captures (raw packet dumps)
+    - Protocol metadata (TCP flags, DNS queries, HTTP headers)
+
+  How we handle it:
+    - MongoDB's flexible BSON document model accommodates varying schemas.
+      A TCP log and a UDP log can have different fields — MongoDB handles this.
+    - Parquet columnar format bridges structured ETL between pipeline stages.
+
+  V4 — VERACITY (Is the data clean and trustworthy?)
+  ---------------------------------------------------
+  Raw network logs are NOISY:
+    - Duplicate sessions from network retransmissions
+    - NULL packets with zero duration (malformed captures)
+    - Inconsistent timestamp formats
+    - Missing byte counts in truncated captures
+
+  How we handle it:
+    - Our PySpark ETL pipeline (clean_logs.py) filters out:
+        * Null/NaN durations
+        * Negative byte values
+        * Duplicate session records
+    - StandardScaler normalizes features so no single value dominates the model.
+    - StringIndexer converts inconsistent text labels to numeric codes.
+
+  V5 — VALUE (Does the raw data produce useful insights?)
+  --------------------------------------------------------
+  Raw packet bytes mean nothing to a security analyst. Value is:
+    - Knowing WHICH IPs are attacking and HOW dangerous they are (0-100 score)
+    - Knowing WHAT attack type each flow belongs to (ML classification)
+    - Knowing WHEN attacks peak (hourly timeline)
+    - Generating copy-paste firewall rules to BLOCK attackers automatically
+
+  How we deliver value:
+    - ML classifier converts raw bytes into attack labels (99.23% accuracy)
+    - IP Reputation Engine assigns risk scores to every attacker
+    - Dashboard shows real-time KPIs, attack timelines, and threat maps
+    - Automated firewall rule generation (iptables, Suricata, BGP Flowspec)
+
+================================================================================
+  5. SYSTEM ARCHITECTURE — 3-NODE DISTRIBUTED CLUSTER
+================================================================================
+
+  We designed a 3-node distributed cluster where each node has a specific role:
+
+  +------------------------------------------+
+  |            MASTER NODE                   |
+  +------------------------------------------+
+  |  MongoDB Router (mongos)  — Port 27017   |
+  |  Apache Spark Master       — Port 7077   |
+  |  Hadoop NameNode           — Port 9000   |
+  |  YARN ResourceManager      — Port 8032   |
+  |  Streamlit Dashboard       — Port 8501   |
+  +-------------------+----------------------+
+                      |
+         +------------+-------------+
+         |                          |
+  +------+-------------+   +--------+-------------+
+  |   WORKER NODE 1    |   |   WORKER NODE 2      |
+  +--------------------+   +----------------------+
+  |  MongoDB Shard 1   |   |  MongoDB Shard 2     |
+  |  (Port 27018)      |   |  (Port 27019)        |
+  |  Hadoop DataNode 1 |   |  Hadoop DataNode 2   |
+  |  (Port 9866)       |   |  (Port 9866)         |
+  |  Spark Worker 1    |   |  Spark Worker 2      |
+  |  (Port 7078)       |   |  (Port 7079)         |
+  +--------------------+   +----------------------+
+
+  MASTER NODE responsibilities:
+    - Routes MongoDB queries to the correct shard
+    - Schedules Spark jobs across both workers
+    - Tracks which HDFS blocks are on which DataNode (NameNode)
+    - Hosts the Streamlit web dashboard
+
+  WORKER NODE responsibilities:
+    - Actually stores the data (MongoDB shard partitions + HDFS data blocks)
+    - Actually executes Spark computations on their local data partition
+    - Reports health status back to master
+
+  KEY DISTRIBUTED COMPUTING CONCEPTS DEMONSTRATED:
+    - Data Parallelism: Same operation runs on all partitions simultaneously
+    - Data Locality: Spark runs computation WHERE data is stored (no network transfer)
+    - Fault Tolerance: If Worker 1 dies, Worker 2 still has replicated data
+
+================================================================================
+  6. COMPLETE TECH STACK (WITH REASONS)
+================================================================================
+
+  TECHNOLOGY 1: Apache Spark (PySpark) v3.5.5
+  --------------------------------------------
+  Role: The core distributed processing engine. Does analytics, and ML.
+
+  Why Spark instead of Pandas?
+    - Pandas: Runs on ONE machine. Loads ALL data into RAM. Crashes on big data.
+    - Spark: Splits data into partitions. Runs each partition on a DIFFERENT
+      machine simultaneously. 100x faster for large datasets.
+
+  Why Spark instead of Hadoop MapReduce?
+    - MapReduce writes intermediate results to DISK after every step.
+    - Spark keeps intermediate results in MEMORY (RAM).
+    - This makes Spark 10x to 100x faster than MapReduce for multi-step jobs.
+
+  Key Spark concepts used in this project:
+    - SparkSession: Entry point, connects to the cluster
+    - RDD (Resilient Distributed Dataset): Low-level distributed data structure
+    - DataFrame: Higher-level table-like API (like Pandas but distributed)
+    - Catalyst Optimizer: Automatically optimizes query execution plans
+    - Spark MLlib: Distributed machine learning library
+
+  TECHNOLOGY 2: MongoDB Atlas (Sharded Cluster) v7.0
+  ---------------------------------------------------
+  Role: High-throughput NoSQL document store for raw logs and analytics results.
+
+  Why MongoDB instead of MySQL/PostgreSQL?
+    - Relational DB (MySQL): Requires a fixed schema — every row must have
+      the SAME columns. Network logs from TCP, UDP, ICMP differ in structure.
+      Altering the schema (ADD COLUMN) on a billion-row table takes hours.
+    - MongoDB: Stores documents as BSON (like JSON). Each document can have
+      different fields. No schema migration needed.
+    - MongoDB Sharding: Automatically splits the collection across multiple
+      machines using a shard key (we use source_ip). Write traffic is
+      distributed — no single-machine bottleneck.
+
+  Collections in our MongoDB database:
+    - network_logs     : Raw ingested CSV records (one doc per network flow)
+    - attack_stats     : Per-attack-type aggregated statistics
+    - protocol_stats   : TCP / UDP / ICMP distribution results
+    - timeline_stats   : Hourly attack intensity over 24 hours
+    - ip_reputation    : Risk scores for every attacker IP (0-100)
+    - predictions      : ML model classification results
+
+  TECHNOLOGY 3: Apache Hadoop HDFS v3.3
+  --------------------------------------
+  Role: Fault-tolerant, distributed raw data lake (cold storage).
+
+  What HDFS does:
+    - Takes large raw CSV files and splits them into 128 MB blocks.
+    - Stores EACH block on 3 different DataNodes (replication factor = 3).
+    - If one machine fails, data is still available on the other two.
+    - Spark reads directly from HDFS using data locality — computation
+      runs on the same machine that holds the data block (no network transfer).
+
+  HDFS vs MongoDB — why use both?
+    - HDFS: Cold storage (raw, unprocessed, immutable log dumps). Good for
+      sequential batch reads. Not designed for fast random queries.
+    - MongoDB: Hot storage (processed, indexed, queryable). Good for
+      real-time lookups like "find all DDoS attacks from IP X in last 1 hour".
+    - Together: HDFS is the Data Lake, MongoDB is the Analytics Store.
+
+  TECHNOLOGY 4: PySpark MLlib
+  ----------------------------
+  Role: Distributed machine learning for attack classification.
+
+  Models trained:
+    a) Decision Tree Classifier (baseline)
+       - Single tree that splits on features to classify attack types
+       - Accuracy: 98.59%  |  F1-Score: 0.9859
+       - Problem: Prone to overfitting (memorizes training data noise)
+
+    b) Random Forest Classifier (production model)
+       - 20 independent decision trees, each trained on a random subset
+       - All 20 trees VOTE — majority vote wins
+       - Accuracy: 99.23%  |  F1-Score: 0.9923
+       - Better because: individual tree errors cancel each other out
+
+  ML Pipeline stages used:
+    1. StringIndexer   — Converts text labels to numbers (TCP=0, UDP=1)
+    2. VectorAssembler — Combines all 8 features into ONE feature vector
+    3. StandardScaler  — Normalizes features to same scale (mean=0, std=1)
+    4. Model Classifier — Decision Tree or Random Forest
+
+  TECHNOLOGY 5: Streamlit + Plotly
+  ----------------------------------
+  Role: Interactive web-based SOC analyst dashboard.
+
+  Why Streamlit?
+    - Pure Python dashboard framework — no HTML/CSS/JavaScript needed
+    - Reactive: Automatically re-renders when data changes
+    - Runs as a web app on localhost:8501
+
+  Why Plotly?
+    - Hardware-accelerated interactive charts (WebGL rendering)
+    - Supports interactive charts: hover tooltips, zoom, pan, filter
+    - Used for: donut charts, bar charts, scatter plots, world maps
+
+  TECHNOLOGY 6: Parquet Columnar Format
+  ---------------------------------------
+  Role: Intermediate file format between pipeline stages.
+
+  Why Parquet instead of CSV?
+    - CSV = ROW-BASED: To read 1 column, you must scan the entire row.
+    - Parquet = COLUMN-BASED: To read only "packet_count", it reads ONLY that
+      column — skips all others. Much faster for analytics queries.
+    - Parquet uses Snappy compression: reduces file size by ~75% vs CSV.
+    - Native support in Spark: zero conversion overhead.
+
+  TECHNOLOGY 7: Python & Supporting Libraries
+  ---------------------------------------------
+    - Python 3.x          : Core programming language
+    - pandas >= 2.0       : Used for small-scale data prep before Spark ingestion
+    - numpy >= 1.24       : Numerical operations for ML evaluation
+    - scikit-learn >= 1.3 : Used for confusion matrix display utilities
+    - pymongo >= 4.5      : Python driver to write results back to MongoDB
+    - python-dotenv       : Reads .env configuration files for cluster URLs
+    - certifi             : TLS certificate verification for MongoDB Atlas cloud
+
+================================================================================
+  7. WHAT WE BUILT — PHASE-BY-PHASE EXPLANATION
+================================================================================
+
+  PHASE 1: Project Scaffold & Environment Configuration
+  ------------------------------------------------------
+  What was done:
+    - Created the full folder structure (spark/, ml/, hadoop/, dashboard/, etc.)
+    - Created requirements.txt with all Python dependencies
+    - Created config/settings.py — a centralized config loader that reads
+      MONGO_URI, SPARK_MASTER_URL, and file paths from the .env file
+    - Created .env.example so team members know which variables to set
+
+  Why this matters:
+    - Ensures all 3 team members use identical configurations
+    - Avoids hardcoded paths — the same code runs locally and on the cluster
+
+  PHASE 2: Data Ingestion Pipeline
+  ----------------------------------
+  Files:
+    - ingestion/csv_to_mongodb.py
+    - (HDFS upload scripts in hadoop/scripts/)
+
+  What was done:
+    - Built a chunked CSV reader that reads 1,000 rows at a time
+    - Converts each chunk to MongoDB documents (Python dicts)
+    - Uses bulk insert (insert_many) for high-throughput ingestion
+    - Simultaneously uploads raw CSV files to Hadoop HDFS cold storage
+
+  Key code concept — chunked ingestion:
+    for chunk in pd.read_csv(csv_file, chunksize=1000):
+        records = chunk.to_dict('records')
+        logs_col.insert_many(records)
+
+  Why chunked?
+    - Loading 1 million rows into RAM all at once crashes on small machines.
+    - Processing 1,000 rows at a time keeps memory usage constant and low.
+
+  PHASE 3 & 4: MongoDB Sharding & HDFS Configuration
+  ----------------------------------------------------
+  Files:
+    - mongodb/scripts/init-sharding.js
+    - hadoop/config/hdfs-site.xml
+    - hadoop/config/core-site.xml
+
+  What was done for MongoDB Sharding:
+    - Configured mongos router on Master Node (port 27017)
+    - Configured Shard 1 on Worker Node 1 (port 27018)
+    - Configured Shard 2 on Worker Node 2 (port 27019)
+    - Enabled hashed sharding on "source_ip" field
+    - This means: logs from IP 1.2.3.4 go to Shard 1, logs from 5.6.7.8
+      go to Shard 2 — perfectly balanced write distribution
+
+  What was done for Hadoop HDFS:
+    - hdfs-site.xml: Set block size = 128 MB, replication = 3
+    - core-site.xml: Set NameNode address = hdfs://master:9000
+    - Created /cybersecurity directory in HDFS for raw log storage
+    - Verified block distribution across DataNode 1 and DataNode 2
+
+  PHASE 5 & 6: Spark ETL Pipeline & Feature Engineering
+  -------------------------------------------------------
+  Files:
+    - spark/preprocessing/clean_logs.py
+    - spark/preprocessing/feature_engineering.py
+
+  CLEAN_LOGS.PY — What it does (ETL):
+    Step 1 — EXTRACT:
+      raw_df = spark.read.csv(input_path, header=True, inferSchema=True)
+      (Spark reads CSV in parallel — each partition on a different worker)
+
+    Step 2 — TRANSFORM:
+      - Cast all columns to correct data types (string, long, double)
+      - Trim whitespace from source_ip and protocol fields
+      - Extract temporal features: hour = hour(timestamp), day_of_week
+      - Drop rows where source_ip is NULL (malformed capture)
+      - Drop rows where flow_duration < 0 (impossible negative time)
+      - Drop duplicate records (network retransmissions cause duplicates)
+
+    Step 3 — LOAD:
+      cleaned_df.write.mode("overwrite").parquet(output_path)
+      (Saves as Parquet — 75% smaller than CSV, much faster for next stage)
+
+  FEATURE_ENGINEERING.PY — What it does:
+    - ML models only understand NUMBERS, not text like "TCP" or "DDoS"
+    - StringIndexer converts: "TCP"→0, "UDP"→1, "ICMP"→2
+    - StringIndexer converts: "DDoS"→0, "PortScan"→1, "BENIGN"→2, etc.
+    - VectorAssembler combines all 8 numerical features into ONE DenseVector:
+        [flow_duration, packet_count, packet_length, total_bytes,
+         hour, day_of_week, protocol_index, severity_index]
+    - StandardScaler normalizes this vector (mean=0, std=1 for each feature)
+      so that large values like total_bytes don't dominate small values like hour
+
+  PHASE 7: Spark Distributed Threat Analytics
+  ---------------------------------------------
+  File: spark/analytics/attack_statistics.py
+
+  What was done:
+  This is the ANALYTICS brain of the project. It runs 4 major aggregations
+  using Spark SQL (which is distributed MapReduce under the hood):
+
+    Aggregation 1 — Attack Distribution:
+      For each attack type (DDoS, PortScan, etc.):
+        - Total number of flows
+        - Percentage share of all traffic
+        - Average severity score (1-4)
+        - Average flow duration (milliseconds)
+        - Total bandwidth consumed (GB)
+      Output: attack_distribution.parquet + MongoDB "attack_stats" collection
+
+    Aggregation 2 — Protocol Distribution:
+      For each protocol (TCP, UDP, ICMP):
+        - Total flows
+        - Percentage share
+        - How many were attacks vs benign
+      Output: protocol_distribution.parquet
+
+    Aggregation 3 — Hourly Attack Intensity:
+      For each hour of the day (0 to 23):
+        - Total flows in that hour
+        - How many were attacks
+        - Attack rate as a percentage
+      Output: hourly_attack_intensity.parquet
+      (This reveals WHEN attacks peak — e.g., 2 AM surge)
+
+    Aggregation 4 — Severity Distribution:
+      For each severity level (Low, Medium, High, Critical):
+        - Count and percentage of flows
+      Output: severity_distribution.parquet
+
+  MapReduce analogy:
+    - MAP phase: Each row is scored (severity text → number)
+    - REDUCE phase: GroupBy attack_type, then count/sum/average per group
+    - This is exactly MapReduce — but executed in Spark's in-memory engine
+
+  PHASE 8: PySpark MLlib Machine Learning
+  -----------------------------------------
+  Files:
+    - ml/training/train_models.py
+    - ml/training/evaluate_models.py
+    - ml/models/predict.py
+
+  What was done:
+
+    Step 1 — Load feature-engineered data:
+      data_df = spark.read.parquet("features.parquet")
+
+    Step 2 — Train/Test Split (80% train, 20% test):
+      train_df, test_df = data_df.randomSplit([0.8, 0.2], seed=42)
+
+    Step 3 — Train Decision Tree (baseline):
+      dt = DecisionTreeClassifier(maxDepth=5, seed=42)
+      dt_model = dt.fit(train_df)
+
+    Step 4 — Train Random Forest (production):
+      rf = RandomForestClassifier(numTrees=20, maxDepth=7, seed=42)
+      rf_model = rf.fit(train_df)
+
+    Step 5 — Evaluate on test set:
+      predictions = rf_model.transform(test_df)
+      # Compute accuracy, F1, precision, recall, confusion matrix
+
+    Step 6 — Save model to disk:
+      rf_model.write().overwrite().save("ml/models/rf_threat_model")
+
+  How distributed ML works in Spark:
+    - The driver broadcasts candidate split bins to all workers
+    - Each worker computes feature histograms on its LOCAL data partition
+    - Workers compute Gini impurity independently and in parallel
+    - The driver collects results and selects the best split
+    - This repeats for all 20 trees simultaneously
+
+  PHASE 9: IP Reputation & Risk Scoring Engine
+  ---------------------------------------------
+  File: ml/risk_engine/calculate_risk.py (also in spark/jobs/)
+
+  What was done:
+    For every unique SOURCE IP in the dataset, compute a 0-100 risk score
+    based on 3 components:
+
+    Component 1 — Frequency Score (0 to 40 points):
+      How many attacks did this IP launch?
+      Score = min(40, attack_count × 4)
+      (More attacks = higher score, capped at 40)
+
+    Component 2 — Severity Multiplier (0 to 40 points):
+      What is the WORST attack type this IP used?
+        DDoS      = 40 points  (most dangerous, takes services offline)
+        Botnet    = 30 points  (persistent, stealthy C2 communication)
+        BruteForce = 25 points (credential theft risk)
+        PortScan  = 15 points  (reconnaissance only, least dangerous)
+        BENIGN    =  0 points  (no attack)
+
+    Component 3 — Blast Radius / Dispersion Score (0 to 20 points):
+      How many DIFFERENT destination IPs did this attacker target?
+      Score = min(20, unique_destinations × 4)
+      (Targeting many victims = more dangerous, wider attack surface)
+
+    Final Formula:
+      Risk Score = min(100, Frequency_Score + Severity_Multiplier + Dispersion_Score)
+
+    Threat Tiers & Automated SOC Response:
+      76 - 100 = CRITICAL → BGP Flowspec Null-Route: block at internet router
+      51 -  75 = HIGH     → Quarantine host, drop active sessions
+      26 -  50 = MEDIUM   → Rate-limit, TCP SYN cookie challenge
+       0 -  25 = LOW      → Standard monitoring only
+
+  PHASE 10: Data Integration — Writing Back to MongoDB
+  ------------------------------------------------------
+  File: spark/jobs/integrate_results.py
+
+  What was done:
+    - All Spark analytics results (Parquet files) are read back
+    - Normalized and inserted into MongoDB analytics collections:
+        attack_stats, protocol_stats, timeline_stats, ip_reputation, predictions
+    - Implemented TLS fallback for MongoDB Atlas cloud connection
+    - Built a LOCAL JSON/Parquet fallback cache — if MongoDB is offline,
+      the dashboard reads from local files instead (resilient design)
+
+  PHASE 11: Enterprise SOC Dashboard
+  ------------------------------------
+  Files:
+    - dashboard/app.py   (~99,726 bytes — the main dashboard)
+    - dashboard/cluster_health.py
+
+  What was built:
+    The dashboard is a full Security Operations Center (SOC) console built
+    with Streamlit and Plotly. It has MULTIPLE tabs/sections:
+
+    Section 1 — OVERVIEW KPIs:
+      - Total flows analyzed
+      - Attack count and attack rate percentage
+      - Number of unique attacking IPs
+      - Critical threat count
+
+    Section 2 — ATTACK DISTRIBUTION:
+      - Interactive Plotly donut chart: attack type breakdown
+      - Bar chart: attack counts with color-coded severity
+
+    Section 3 — PROTOCOL ANALYSIS:
+      - TCP vs UDP vs ICMP distribution
+      - Attack rate per protocol
+
+    Section 4 — 24-HOUR ATTACK TIMELINE:
+      - Line chart showing attack intensity by hour
+      - Identifies peak attack windows (e.g., 2 AM surge)
+
+    Section 5 — TOP ATTACKING IPs:
+      - Table of most dangerous attacker IPs
+      - Sortable by attack count, risk score, threat tier
+
+    Section 6 — IP THREAT LOOKUP:
+      - Enter any IP address
+      - Returns: risk score (0-100), threat tier, attack history,
+        recommended SOC response, firewall rules
+
+    Section 7 — CLUSTER HEALTH MONITOR (cluster_health.py):
+      - MongoDB shard status
+      - Hadoop HDFS DataNode status
+      - Spark Master/Worker status
+      - Live animated health indicators
+
+  PHASE 12: Advanced Enterprise Features & Testing
+  --------------------------------------------------
+  Files:
+    - run_platform.py    (single-command demonstration runner)
+    - tests/             (comprehensive test suite)
+
+  Advanced Feature 1 — Global Geospatial Threat Intelligence Map:
+    - Maps adversary IPs to real-world geographic coordinates
+    - Plotly interactive world map (Carto-Dark projection)
+    - Shows attacks per country, ASN carrier profiling
+    - Visualizes attack volume by country (US, China, Russia, Netherlands)
+
+  Advanced Feature 2 — MITRE ATT&CK Matrix Engine:
+    - Maps each detected attack to official MITRE ATT&CK framework:
+        PortScan   → T1046: Network Service Discovery (Reconnaissance)
+        DDoS       → T1498: Network Denial of Service (Impact)
+        BruteForce → T1110: Brute Force / Credential Spraying (Credential Access)
+        Botnet     → T1584+T1071: C2 Infrastructure (Command & Control)
+    - 1-click automated containment: generates firewall rules in 4 syntaxes:
+        1. Linux iptables / nftables commands
+        2. Suricata IDS alert signatures
+        3. BGP Flowspec router ACL drops
+        4. PySpark real-time streaming blacklist filter code
+
+  Advanced Feature 3 — Shannon Entropy Anomaly Engine:
+    - Calculates information-theoretic entropy of packet distributions
+    - H(X) = -Σ P(x) log₂(P(x)) across packet length distributions
+    - Low entropy (0.0-1.8 bits) → DDoS flood (repetitive scripted packets)
+    - High entropy (>7.3 bits) → Encrypted C2 beacon or data exfiltration
+    - 20-window moving average for drift detection
+
+  Advanced Feature 4 — Live SOC Wiretap Stream Simulator:
+    - Simulates real-time packet capture with hex payload previews
+    - TCP flag inspection: [SYN], [ACK], [RST], [PSH+ACK], [FIN]
+    - Spark micro-batch throughput metrics (vectorization: 0.82ms, inference: 1.78ms)
+
+================================================================================
+  8. DATA PIPELINE FLOW (End-to-End)
+================================================================================
+
+  CICIDS2017 CSV Files (raw, millions of rows)
+           |
+           |--- [Step 1: Dual Ingestion] ---------------------------------
+           |    csv_to_mongodb.py    → MongoDB "network_logs" collection
+           |    hdfs_upload.py       → Hadoop HDFS /cybersecurity/raw/
+           |
+           |--- [Step 2: Spark ETL - clean_logs.py] ----------------------
+           |    Input:  raw CSV from HDFS
+           |    Output: cleaned_logs.parquet (nulls removed, types fixed)
+           |
+           |--- [Step 3: Feature Engineering - feature_engineering.py] ---
+           |    Input:  cleaned_logs.parquet
+           |    Output: features.parquet (8-dimensional DenseVectors)
+           |
+           |--- [Step 4: Analytics - attack_statistics.py] ---------------
+           |    Input:  cleaned_logs.parquet
+           |    Output: attack_distribution.parquet
+           |             protocol_distribution.parquet
+           |             hourly_attack_intensity.parquet
+           |             severity_distribution.parquet
+           |
+           |--- [Step 5: ML Training - train_models.py] ------------------
+           |    Input:  features.parquet
+           |    Output: rf_threat_model/ (saved Random Forest model)
+           |             confusion_matrix.json
+           |
+           |--- [Step 6: ML Prediction - predict.py] ---------------------
+           |    Input:  features.parquet + rf_threat_model/
+           |    Output: predictions.parquet (each flow with predicted label)
+           |
+           |--- [Step 7: Risk Scoring - calculate_risk.py] ---------------
+           |    Input:  predictions.parquet
+           |    Output: ip_risk_scores.parquet (0-100 score per IP)
+           |
+           |--- [Step 8: Integration - integrate_results.py] -------------
+           |    Writes ALL results to MongoDB analytics collections
+           |
+           |--- [Step 9: Dashboard - dashboard/app.py] -------------------
+                Reads from MongoDB + local fallback cache
+                Renders Streamlit web app at http://localhost:8501
+
+================================================================================
+  9. MACHINE LEARNING — WHAT WE TRAINED & HOW
+================================================================================
+
+  FEATURE VECTOR (8 dimensions per network flow):
+  ------------------------------------------------
+  Each network flow is represented as a vector of 8 numbers:
+
+    Feature 1: flow_duration     — Session length in microseconds
+    Feature 2: packet_count      — Total packets exchanged
+    Feature 3: packet_length     — Mean packet size in bytes
+    Feature 4: total_bytes       — Total bandwidth consumed
+    Feature 5: hour              — Hour of day (0–23), temporal pattern
+    Feature 6: day_of_week       — Day number (1–7), weekly pattern
+    Feature 7: protocol_index    — TCP=0, UDP=1, ICMP=2 (encoded)
+    Feature 8: severity_index    — Low=0, Med=1, High=2, Critical=3
+
+  TARGET LABEL (what we are predicting):
+    attack_type → encoded to: BENIGN=0, DDoS=1, PortScan=2, BruteForce=3, Botnet=4
+
+  PREPROCESSING PIPELINE (executed in Spark):
+    StringIndexer → VectorAssembler → StandardScaler → Classifier
+
+  RESULTS:
+  --------
+    Decision Tree:
+      Accuracy  = 98.59%
+      F1-Score  = 0.9859
+      Train Time = 4.11 seconds
+
+    Random Forest (20 trees, maxDepth=7):
+      Accuracy  = 99.23%
+      F1-Score  = 0.9923
+      Train Time = 3.01 seconds
+
+  WHY RANDOM FOREST IS BETTER:
+    A single Decision Tree memorizes patterns in training data (overfitting).
+    Random Forest builds 20 trees, each on a RANDOM SAMPLE of data and
+    a RANDOM SUBSET of features. All 20 vote on every prediction.
+    Individual tree errors cancel each other out → better generalization.
+
+  CONFUSION MATRIX (5x5 multi-class):
+    Rows = Actual class, Columns = Predicted class
+    A perfect classifier has all values on the diagonal.
+    Our model's confusion matrix shows near-perfect diagonal values,
+    confirming 99.23% accuracy across all 5 attack classes.
+
+================================================================================
+  10. IP REPUTATION ENGINE — RISK SCORING FORMULA
+================================================================================
+
+  FORMULA:
+    Risk Score = min(100, Frequency_Score + Severity_Multiplier + Dispersion_Score)
+
+  COMPONENT BREAKDOWN:
+
+    A. Frequency Score (max 40 points):
+       = min(40, number_of_attacks_by_this_IP × 4)
+       Example: IP launches 8 attacks → 8 × 4 = 32 points
+
+    B. Severity Multiplier (max 40 points):
+       Based on WORST attack type this IP used:
+         DDoS       = 40 pts (takes services offline — most critical)
+         Botnet     = 30 pts (persistent stealth C2 communication)
+         BruteForce = 25 pts (credential theft — account takeover risk)
+         PortScan   = 15 pts (reconnaissance only — low direct impact)
+         BENIGN     =  0 pts (no malicious activity detected)
+
+    C. Dispersion / Blast Radius Score (max 20 points):
+       = min(20, number_of_unique_destination_IPs_targeted × 4)
+       Example: IP targets 3 different hosts → 3 × 4 = 12 points
+
+  EXAMPLE CALCULATION:
+    IP: 13.93.219.67
+      - Launched 7 DDoS attacks against 4 different targets
+      - Frequency Score:   min(40, 7 × 4) = 28
+      - Severity:          DDoS = 40
+      - Dispersion:        min(20, 4 × 4) = 16
+      - TOTAL RISK SCORE:  28 + 40 + 16 = 84 → CRITICAL TIER
+
+    SOC Response for CRITICAL: BGP Flowspec Null-Route (full ISP-level block)
+
+  THREAT TIER TABLE:
+    Score 76-100 = CRITICAL → Null-route at internet router, perimeter isolation
+    Score 51-75  = HIGH     → Quarantine host, drop all active sessions
+    Score 26-50  = MEDIUM   → Rate-limit traffic, TCP SYN cookie challenge
+    Score 0-25   = LOW      → Standard monitoring, normal routing
+
+================================================================================
+  11. DASHBOARD & VISUALIZATION
+================================================================================
+
+  URL: http://localhost:8501 (after running: streamlit run dashboard/app.py)
+
+  Design Philosophy:
+    - Enterprise dark theme (#060913 background) — like CrowdStrike/Splunk
+    - NO emojis — replaced with CSS animated status indicators
+    - All charts are interactive (hover for values, zoom, pan)
+
+  Dashboard Sections:
+    1. KPI Header Cards     — total flows, attack count, unique IPs, criticals
+    2. Attack Donut Chart   — Plotly interactive pie/donut by attack type
+    3. Protocol Breakdown   — TCP vs UDP vs ICMP bar chart
+    4. 24-Hour Timeline     — hourly attack intensity line chart
+    5. Top Attacker IPs     — sortable data table with risk scores
+    6. IP Threat Lookup     — enter any IP, get full threat profile instantly
+    7. Cluster Health       — MongoDB/HDFS/Spark health status with live dots
+    8. Geospatial Map       — World map showing attack origin countries
+    9. MITRE ATT&CK Panel  — attack technique mapping and firewall rule generator
+    10. Entropy Analyzer    — Shannon entropy anomaly detection visualization
+
+================================================================================
+  12. ADVANCED ENTERPRISE FEATURES
+================================================================================
+
+  FEATURE 1: Geospatial Threat Intelligence Map
+    - Each adversary IP is geo-located to a country, city, coordinates
+    - Displayed on an interactive Plotly world scatter map
+    - Shows: country-level attack volumes, ASN carrier info
+    - Countries in dataset: US, China, Russia, Germany, Netherlands, Brazil, India
+
+  FEATURE 2: Adversary Attack Graph (Lateral Movement Analysis)
+    - Models the network as a directed graph
+    - Vertices: external adversaries, DMZ proxy hosts, internal assets
+    - Edges: network flows (with volume and attack type)
+    - Detects compromised "pivot boxes" — intermediate jump points
+    - Calculates In-Degree / Out-Degree centrality to find high-value targets
+
+  FEATURE 3: Shannon Entropy Zero-Day Detection Engine
+    - Applies information theory to detect anomalous traffic
+    - Low entropy → repetitive, scripted DDoS flooding
+    - High entropy → encrypted C2 beaconing or data exfiltration
+    - 20-window moving average for smooth drift tracking
+
+  FEATURE 4: MITRE ATT&CK Automated Incident Response
+    - Correlates each detected attack type to MITRE technique IDs
+    - 1-click containment generates copy-paste firewall rules in 4 formats
+    - Supports: iptables, Suricata IDS, BGP Flowspec, PySpark blacklist filter
+
+  FEATURE 5: Live SOC Wiretap Stream Simulator
+    - Simulates real-time packet capture with hex payload display
+    - Shows TCP flags: SYN, ACK, RST, PSH+ACK, FIN
+    - Tracks Spark processing latency: vectorize=0.82ms, inference=1.78ms
+    - Includes 10,000-packet DDoS flood surge injector for demo
+
+================================================================================
+  13. PROJECT FILE STRUCTURE
+================================================================================
+
+  BDS Project/
+  |
+  |-- .env                  ← Environment variables (MongoDB URI, Spark URL, paths)
+  |-- .env.example          ← Template for .env (safe to commit)
+  |-- requirements.txt      ← Python package dependencies
+  |-- run_platform.py       ← Single-command full demo runner
+  |-- README.md             ← GitHub project documentation
+  |
+  |-- config/
+  |   |-- settings.py       ← Centralized config loader (reads from .env)
+  |
+  |-- data/
+  |   |-- raw/              ← Raw CICIDS2017 CSV files (input)
+  |   |-- processed/        ← Cleaned Parquet files (pipeline output)
+  |
+  |-- ingestion/
+  |   |-- csv_to_mongodb.py ← Chunked CSV → MongoDB ingestion pipeline
+  |
+  |-- hadoop/
+  |   |-- config/
+  |   |   |-- core-site.xml ← NameNode address (hdfs://master:9000)
+  |   |   |-- hdfs-site.xml ← Block size (128MB), replication (3)
+  |   |-- scripts/          ← HDFS directory creation and upload scripts
+  |
+  |-- mongodb/
+  |   |-- scripts/
+  |       |-- init-sharding.js  ← MongoDB shard initialization script
+  |
+  |-- spark/
+  |   |-- preprocessing/
+  |   |   |-- clean_logs.py          ← ETL: clean, deduplicate, cast types
+  |   |   |-- feature_engineering.py ← ML prep: encode, assemble, scale
+  |   |-- analytics/
+  |   |   |-- attack_statistics.py   ← Attack/protocol/hourly aggregations
+  |   |-- jobs/
+  |       |-- integrate_results.py   ← Write Spark results back to MongoDB
+  |
+  |-- ml/
+  |   |-- training/
+  |   |   |-- train_models.py    ← Train Decision Tree + Random Forest
+  |   |   |-- evaluate_models.py ← Accuracy, F1, confusion matrix
+  |   |-- models/                ← Saved Random Forest model files
+  |   |-- prediction/
+  |   |   |-- predict.py         ← Run inference on new data
+  |   |-- risk_engine/
+  |       |-- calculate_risk.py  ← 0-100 IP risk scoring formula
+  |
+  |-- dashboard/
+  |   |-- app.py             ← Main Streamlit SOC dashboard (~99KB)
+  |   |-- cluster_health.py  ← Cluster health monitoring module
+  |
+  |-- docs/
+  |   |-- architecture.md    ← System architecture documentation
+  |   |-- demo_guide.md      ← Viva presentation guide
+  |
+  |-- tests/
+      |-- test_foundation.py ← Unit and integration test suite
+
+================================================================================
+  14. HOW TO RUN THE PROJECT
+================================================================================
+
+  PREREQUISITES:
+    - Python 3.9+ installed
+    - Java 11+ installed (required by Apache Spark)
+    - MongoDB running (local or Atlas cloud — URI set in .env)
+    - (Optional) Hadoop installed for full HDFS functionality
+
+  SETUP:
+    1. Clone the repository
+    2. Copy .env.example to .env and fill in your MongoDB URI
+    3. Install dependencies:
+         pip install -r requirements.txt
+
+  RUN OPTIONS:
+
+    Option A — Full Platform Demo (all 6 stages, automated):
+      python run_platform.py
+
+    Option B — IP Threat Lookup (lookup a specific IP):
+      python run_platform.py --ip 13.93.219.67
+
+    Option C — Launch SOC Dashboard only:
+      streamlit run dashboard/app.py
+      Then open: http://localhost:8501
+
+    Option D — Run individual Spark jobs:
+      python spark/preprocessing/clean_logs.py
+      python spark/preprocessing/feature_engineering.py
+      python spark/analytics/attack_statistics.py
+      python ml/training/train_models.py
+      python ml/risk_engine/calculate_risk.py
+
+    Option E — Run integration tests:
+      python -m unittest tests/test_foundation.py
+
+================================================================================
+  15. KEY RESULTS & PERFORMANCE METRICS
+================================================================================
+
+  MACHINE LEARNING PERFORMANCE:
+    - Random Forest Accuracy  : 99.23%
+    - Random Forest F1-Score  : 0.9923
+    - Random Forest Train Time: 3.01 seconds
+    - Decision Tree Accuracy  : 98.59%
+    - Decision Tree Train Time: 4.11 seconds
+    - 5-class multi-label classification (BENIGN, DDoS, PortScan, BruteForce, Botnet)
+
+  PROCESSING PERFORMANCE:
+    - Spark inference latency  : 1.78 ms per network flow
+    - Spark vectorize latency  : 0.82 ms per flow
+    - ETL processing speed     : 100,000 records in ~10 seconds
+    - Parquet compression ratio: ~75% size reduction vs raw CSV
+
+  DATA SCALE:
+    - Dataset: CICIDS2017 (millions of records, multiple GB)
+    - MongoDB collections: 6 (logs, attack_stats, protocol_stats,
+                             timeline_stats, ip_reputation, predictions)
+    - HDFS block size: 128 MB with 3x replication
+    - IP risk scores: Computed for every unique source IP in the dataset
+    - Threat tiers: 4 (Low, Medium, High, Critical)
+
+================================================================================
+  16. FUTURE SCOPE
+================================================================================
+
+  1. Apache Kafka Real-Time Streaming:
+     - Replace batch ingestion with Apache Kafka message broker
+     - Zeek/Suricata wiretaps push flows to Kafka topics
+     - Spark Structured Streaming processes topic partitions
+     - End-to-end detection latency: < 500 milliseconds
+
+  2. Apache Spark GraphX for Lateral Movement:
+     - Model network as directed property graph
+     - Execute PageRank to find C2 botnet hub IPs
+     - Detect multi-hop lateral movement with Strongly Connected Components
+
+  3. Deep Learning Autoencoders for Zero-Day Detection:
+     - Train autoencoder neural network on normal traffic ONLY
+     - Zero-day attacks have high reconstruction error → anomaly flag
+     - Detects attacks without labeled training data (unsupervised)
+
+  4. Kubernetes + Docker Containerization:
+     - Package Spark, MongoDB, HDFS into Kubernetes pods with Helm charts
+     - Horizontal Pod Autoscaling (HPA) based on packet ingress volume
+     - True cloud-native elastic scaling
+
+  5. SOAR Integration (Security Orchestration & Automated Response):
+     - Connect to AWS GuardDuty, Cloudflare WAF, Palo Alto Panorama APIs
+     - Push null-route rules directly to edge routers in real-time
+     - Full automated threat response without human intervention

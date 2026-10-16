@@ -40,7 +40,7 @@ def get_spark_session(app_name="CyberThreat-CleanLogs"):
         .master(get_spark_master_url(use_cluster=False))
         .config("spark.driver.host", "127.0.0.1")
         .config("spark.driver.bindAddress", "127.0.0.1")
-        .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.sql.shuffle.partitions", "4") # 4 parallel partitions split. each run on its node.
         .config("spark.ui.enabled", "false")
         .getOrCreate()
     )
